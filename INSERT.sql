@@ -27,28 +27,31 @@ select
 	phone
 from car_shop.temp_person;
 
-insert into car_shop.brand_cars (brand)
+insert into car_shop.brand_cars (brand, country_id)
 select
-	distinct(trim(split_part(split_part(auto, ',', 1), ' ', 1)))
-from raw_data.sales s;
+	distinct(trim(split_part(split_part(auto, ',', 1), ' ', 1))),
+	oc.id
+from raw_data.sales s
+join car_shop.origins_country oc
+on s.brand_origin = oc.origin_country;
 
-insert into car_shop.car_models (model)
+insert into car_shop.car_models (model, brand_id)
 select
-	distinct(trim(substr(split_part(auto, ',', 1), strpos(split_part(auto, ',', 1), ' '))))
-from raw_data.sales s;
+	distinct(trim(substr(split_part(auto, ',', 1), strpos(split_part(auto, ',', 1), ' ')))),
+	bc.id
+from raw_data.sales s
+join car_shop.brand_cars bc
+on trim(split_part(split_part(auto, ',', 1), ' ', 1)) = bc.brand;
 
-insert into car_shop.cars (
-	brand_car_id,
+insert into car_shop.car_sales (
 	car_model_id,
 	gasoline_consumption,
 	price,
 	date,
 	color_id,
-	brand_origin_id,
 	client_id
 	)
 select
-	bc.id,
 	cm.id,
 	case
 		when gasoline_consumption = 'null' then null
@@ -57,7 +60,6 @@ select
 	price::numeric(9, 2),
 	date::date,
 	col.id,
-	oc.id,
 	c.id
 from raw_data.sales s
 left join car_shop.brand_cars bc
@@ -71,21 +73,13 @@ on s.brand_origin = oc.origin_country
 join car_shop.clients c
 on s.phone = c.phone;
 
-insert into car_shop.cars_colors (color_id, car_id)
-select
-    col.id,
-    car.id
-from car_shop.colors col
-join car_shop.cars car
-on car.color_id = col.id;
-
 insert into car_shop.clients_discount (client_id, auto_id, discount)
 select
 	cli.id,
 	c.id,
 	s.discount::smallint
 from car_shop.clients cli
-join car_shop.cars c
+join car_shop.car_sales c
 on c.client_id = cli.id
 left join raw_data.sales s
 on s.phone = cli.phone
